@@ -40,7 +40,7 @@ html {
   color-scheme: dark;
 }
 
-[data-theme="light"] {
+[data-theme='light'] {
   --color-bg: #f8fafc;
   --color-surface: #ffffff;
   --color-surface-raised: #f1f5f9;
@@ -65,11 +65,16 @@ body {
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  transition: background-color var(--transition-base), color var(--transition-base);
+  transition:
+    background-color var(--transition-base),
+    color var(--transition-base);
 }
 
 body * {
-  transition: background-color var(--transition-base), border-color var(--transition-base), box-shadow var(--transition-base);
+  transition:
+    background-color var(--transition-base),
+    border-color var(--transition-base),
+    box-shadow var(--transition-base);
 }
 
 /* ─── App Shell ──────────────────────────────────────────────── */
@@ -129,7 +134,9 @@ body * {
 
 .fetch-card:focus-within {
   border-color: var(--color-accent);
-  box-shadow: var(--shadow-sm), 0 0 0 3px var(--color-accent-glow);
+  box-shadow:
+    var(--shadow-sm),
+    0 0 0 3px var(--color-accent-glow);
 }
 
 .fetch-card-label {
@@ -360,17 +367,38 @@ body * {
   animation: shimmer 1.5s ease-in-out infinite;
 }
 
-.skeleton-line:nth-child(1) { width: 60%; height: 20px; margin-bottom: 20px; }
-.skeleton-line:nth-child(2) { width: 100%; }
-.skeleton-line:nth-child(3) { width: 90%; }
-.skeleton-line:nth-child(4) { width: 95%; }
-.skeleton-line:nth-child(5) { width: 40%; }
-.skeleton-line:nth-child(6) { width: 85%; margin-top: 20px; }
-.skeleton-line:nth-child(7) { width: 78%; }
+.skeleton-line:nth-child(1) {
+  width: 60%;
+  height: 20px;
+  margin-bottom: 20px;
+}
+.skeleton-line:nth-child(2) {
+  width: 100%;
+}
+.skeleton-line:nth-child(3) {
+  width: 90%;
+}
+.skeleton-line:nth-child(4) {
+  width: 95%;
+}
+.skeleton-line:nth-child(5) {
+  width: 40%;
+}
+.skeleton-line:nth-child(6) {
+  width: 85%;
+  margin-top: 20px;
+}
+.skeleton-line:nth-child(7) {
+  width: 78%;
+}
 
 @keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 /* ─── Empty State ────────────────────────────────────────────── */
@@ -488,11 +516,11 @@ body * {
 }
 
 .divider:not(:empty)::before {
-  margin-right: .5em;
+  margin-right: 0.5em;
 }
 
 .divider:not(:empty)::after {
-  margin-left: .5em;
+  margin-left: 0.5em;
 }
 
 .upload-zone {
@@ -544,7 +572,8 @@ body * {
   margin-bottom: 8px;
 }
 
-.form-input, .form-select {
+.form-input,
+.form-select {
   width: 100%;
   background: var(--color-bg);
   border: 1px solid var(--color-border);
@@ -557,7 +586,8 @@ body * {
   transition: border-color var(--transition-fast);
 }
 
-.form-input:focus, .form-select:focus {
+.form-input:focus,
+.form-select:focus {
   border-color: var(--color-accent);
 }
 
@@ -660,7 +690,8 @@ body * {
   }
 }
 
-.review-left, .review-right {
+.review-left,
+.review-right {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -727,13 +758,27 @@ body * {
   font-weight: 600;
 }
 
-.markdown-preview h1 { font-size: 1.8em; }
-.markdown-preview h2 { font-size: 1.4em; }
-.markdown-preview h3 { font-size: 1.2em; }
+.markdown-preview h1 {
+  font-size: 1.8em;
+}
+.markdown-preview h2 {
+  font-size: 1.4em;
+}
+.markdown-preview h3 {
+  font-size: 1.2em;
+}
 
-.markdown-preview p { margin-bottom: 1em; }
-.markdown-preview ul, .markdown-preview ol { margin-bottom: 1em; padding-left: 24px; }
-.markdown-preview li { margin-bottom: 0.25em; }
+.markdown-preview p {
+  margin-bottom: 1em;
+}
+.markdown-preview ul,
+.markdown-preview ol {
+  margin-bottom: 1em;
+  padding-left: 24px;
+}
+.markdown-preview li {
+  margin-bottom: 0.25em;
+}
 
 .markdown-preview code {
   background: var(--color-surface-raised);
@@ -843,7 +888,9 @@ body * {
   display: flex;
   gap: 16px;
   align-items: flex-start;
-  transition: transform var(--transition-fast), border-color var(--transition-fast);
+  transition:
+    transform var(--transition-fast),
+    border-color var(--transition-fast);
 }
 
 .question-item.interactive {

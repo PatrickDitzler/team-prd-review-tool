@@ -42,7 +42,11 @@ export default function SettingsPage() {
   return (
     <div className="settings-container">
       <header className="settings-header">
-        <button className="icon-button back-button" onClick={() => router.back()} aria-label="Go back">
+        <button
+          className="icon-button back-button"
+          onClick={() => router.back()}
+          aria-label="Go back"
+        >
           <ArrowLeft size={20} />
         </button>
         <div>
@@ -51,7 +55,8 @@ export default function SettingsPage() {
             AI Provider Settings
           </h1>
           <p className="settings-subtitle">
-            Configure your preferred LLM provider. Keys are stored securely in your browser&apos;s local storage.
+            Configure your preferred LLM provider. Keys are stored securely in your browser&apos;s
+            local storage.
           </p>
         </div>
         <div style={{ marginLeft: 'auto' }}>
@@ -68,7 +73,9 @@ export default function SettingsPage() {
         )}
 
         <div className="form-group">
-          <label htmlFor="provider" className="form-label">Provider</label>
+          <label htmlFor="provider" className="form-label">
+            Provider
+          </label>
           <select
             id="provider"
             className="form-select"
@@ -85,7 +92,9 @@ export default function SettingsPage() {
         </div>
 
         <div className="form-group">
-          <label htmlFor="apiKey" className="form-label">API Key</label>
+          <label htmlFor="apiKey" className="form-label">
+            API Key
+          </label>
           <input
             id="apiKey"
             type="password"
@@ -97,7 +106,9 @@ export default function SettingsPage() {
         </div>
 
         <div className="form-group">
-          <label htmlFor="model" className="form-label">Model (Optional)</label>
+          <label htmlFor="model" className="form-label">
+            Model (Optional)
+          </label>
           <input
             id="model"
             type="text"
@@ -111,9 +122,11 @@ export default function SettingsPage() {
 
         {['openai', 'openrouter', 'local'].includes(provider) && (
           <div className="form-group">
-            <label htmlFor="baseURL" className="form-label">Base URL (Optional)</label>
+            <label htmlFor="baseURL" className="form-label">
+              Base URL (Optional)
+            </label>
             <input
-               id="baseURL"
+              id="baseURL"
               type="text"
               className="form-input"
               value={baseURL}
@@ -127,7 +140,7 @@ export default function SettingsPage() {
           Save Settings
         </button>
       </form>
-      
+
       <PromptSettings />
     </div>
   );

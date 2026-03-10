@@ -6,7 +6,8 @@ This file provides context and conventions for AI coding agents (e.g. Gemini, Co
 
 ## Project Overview
 
-**PRD Review Tool** is a Next.js 16 web app that helps product managers:
+**PRD Review Tool** is a Next.js 16 web app **and CLI tool** that helps product managers:
+
 1. **Ingest** a PRD from Confluence (via URL/page ID) or from a local file upload (PDF, DOCX, Markdown)
 2. **Stage** the PRD as a local Markdown file in `prds/`
 3. **Review** the PRD using an AI that generates QA, engineering, and design questions
@@ -14,23 +15,26 @@ This file provides context and conventions for AI coding agents (e.g. Gemini, Co
 5. **Evaluate** each PBI using a swarm of 6 specialized AI agents running in parallel
 6. **Export** the PBIs as Feature + child work items to Azure DevOps
 
+Both the **web UI** and the **CLI** share a common core library (`lib/core/`) containing all business logic.
+
 ---
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Framework | Next.js 16 (App Router, `--webpack` flag) |
-| Language | TypeScript 5 |
-| UI Components | Chakra UI v3 + Lucide React icons |
-| Styling | Vanilla CSS with custom properties (`app/globals.css`) |
-| AI SDK | Vercel AI SDK (`ai` package) |
-| LLM Providers | OpenAI, Anthropic, Google Gemini, OpenRouter, Local (via `@ai-sdk/*`) |
-| Schema Validation | Zod |
-| MD Conversion | Turndown (HTML → Markdown) |
-| File Parsing | `mammoth` (DOCX), `pdf-parse` (PDF) |
-| Testing | Vitest + jsdom + @testing-library/react |
-| Linting/Formatting | ESLint (Next.js config), Prettier |
+| Layer              | Technology                                                            |
+| ------------------ | --------------------------------------------------------------------- |
+| Framework          | Next.js 16 (App Router, `--webpack` flag)                             |
+| Language           | TypeScript 5                                                          |
+| UI Components      | Chakra UI v3 + Lucide React icons                                     |
+| Styling            | Vanilla CSS with custom properties (`app/globals.css`)                |
+| AI SDK             | Vercel AI SDK (`ai` package)                                          |
+| LLM Providers      | OpenAI, Anthropic, Google Gemini, OpenRouter, Local (via `@ai-sdk/*`) |
+| Schema Validation  | Zod                                                                   |
+| MD Conversion      | Turndown (HTML → Markdown)                                            |
+| File Parsing       | `mammoth` (DOCX), `pdf-parse` (PDF)                                   |
+| CLI                | Commander + @inquirer/prompts + chalk + ora                           |
+| Testing            | Vitest + jsdom + @testing-library/react                               |
+| Linting/Formatting | ESLint (Next.js config), Prettier                                     |
 
 ---
 
@@ -60,8 +64,30 @@ components/
   ThemeToggle.tsx               # Light/dark mode toggle button
   ThemeProvider.tsx             # Provides theme context via CSS class on <html>
 lib/
+  core/
+    types.ts                    # Shared TypeScript interfaces (LLMSettings, EnhancedPBI, etc.)
+    ingest.ts                   # PRD ingestion (Confluence, file, demo) — used by web + CLI
+    review.ts                   # Question generation — used by web + CLI
+    review-session.ts           # Markdown export/import for collaborative team reviews
+    breakdown.ts                # Breakdown generation (streaming + non-streaming)
+    evaluate.ts                 # 6-agent swarm evaluation — used by web + CLI
+    export.ts                   # Azure DevOps export — used by web + CLI
+    codebase-scanner.ts         # Local codebase context scanner
+    config.ts                   # .prd-review.json config management
   confluence.ts                 # extractPageId(), fetchConfluencePage(), htmlToMarkdown()
   llm-provider.ts               # getLLMProvider(settings) — returns a LanguageModel
+cli/
+  index.ts                      # CLI entry point — registers all commands via Commander
+  commands/
+    ingest.ts                   # `prd-review ingest` — Confluence / file / demo
+    review.ts                   # `prd-review review` — generate & answer questions
+    breakdown.ts                # `prd-review breakdown` — generate & approve
+    evaluate.ts                 # `prd-review evaluate` — run 6-agent swarm
+    export.ts                   # `prd-review export` — Azure DevOps
+    run.ts                      # `prd-review run` — full interactive pipeline
+    config.ts                   # `prd-review config` — setup wizard
+  utils/
+    display.ts                  # Terminal formatting (headers, tables, colors)
 __tests__/
   lib/confluence.test.ts        # Unit tests for URL parsing + HTML→MD conversion
   setup.ts                      # jsdom test setup
@@ -95,7 +121,7 @@ export async function POST(req: Request) {
     console.error('Context message:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -104,6 +130,33 @@ export async function POST(req: Request) {
 - **Always** use `try/catch` with a catch-all error response.
 - **Always** validate required fields and return `400` with an `error` string.
 - **Never** return sensitive information (env vars, tokens) in error responses.
+- **API routes are thin wrappers** — all business logic lives in `lib/core/`. Call the shared functions, don't duplicate.
+
+### Shared Core Pattern
+
+All business logic is in `lib/core/`. Both API routes and CLI commands import from here. When adding new functionality:
+
+1. Add the core logic as a function in `lib/core/<module>.ts`
+2. Create the API route in `app/api/` that calls the core function
+3. (Optional) Add a CLI command in `cli/commands/` that calls the same core function
+
+```typescript
+// lib/core/review.ts — the shared business logic
+export async function generateReviewQuestions(markdown, type, settings, customPrompts) { ... }
+
+// app/api/review/questions/route.ts — thin HTTP wrapper
+import { generateReviewQuestions } from '@/lib/core/review';
+export async function POST(req) {
+  const { markdown, type, settings } = await req.json();
+  const questions = await generateReviewQuestions(markdown, type, settings);
+  return NextResponse.json({ questions });
+}
+
+// cli/commands/review.ts — thin CLI wrapper
+import { generateReviewQuestions } from '../../lib/core/review';
+const questions = await generateReviewQuestions(markdown, type, settings);
+printQuestions(questions, type);
+```
 
 ### LLM Calls
 
@@ -131,11 +184,13 @@ const { object } = await generateObject({
 
 ### Swarm Evaluation Pattern
 
-The evaluate-pbi route runs **6 agent calls in parallel** using `Promise.all`. When adding a new agent:
-1. Add a new `generateText` call to the `Promise.all` array in `app/api/evaluate-pbi/route.ts`
-2. Add the agent's named result to the `agentReviews` array on `evaluatedPBIs.push(...)`
+The evaluate-pbi route runs **6 agent calls in parallel** using `Promise.all`. The logic lives in `lib/core/evaluate.ts`. When adding a new agent:
+
+1. Add a new `generateText` call to the `Promise.all` array in `lib/core/evaluate.ts`
+2. Add the agent's named result to the `agentReviews` array
 3. Add the corresponding icon and color mapping in `components/SwarmEvaluator.tsx`
 4. Add a custom prompt field in `components/PromptSettings.tsx` and `DEFAULT_PROMPTS`
+5. Update `cli/utils/display.ts` `printPBIs()` with the new role color
 
 ### Staging PRD Files
 
@@ -194,19 +249,22 @@ Themed dark/light switching is done by toggling a `dark` CSS class on `<html>`.
 - **Run tests:** `npm test` (single run) or `npm run test:watch`
 
 When adding a new `lib/` utility, add a corresponding test file in `__tests__/lib/`. Focus tests on:
+
 - Input parsing (e.g. URL → page ID extraction)
 - Edge cases and error handling
 - Pure function behavior (not HTTP calls — mock those)
 
 Example:
+
 ```typescript
 import { describe, it, expect } from 'vitest';
 import { extractPageId } from '@/lib/confluence';
 
 describe('extractPageId', () => {
   it('parses a modern Confluence URL', () => {
-    expect(extractPageId('https://team.atlassian.net/wiki/spaces/ENG/pages/12345/Title'))
-      .toBe('12345');
+    expect(extractPageId('https://team.atlassian.net/wiki/spaces/ENG/pages/12345/Title')).toBe(
+      '12345',
+    );
   });
 });
 ```
@@ -215,11 +273,11 @@ describe('extractPageId', () => {
 
 ## Environment Variables
 
-| Variable | Required | Description |
-|---|---|---|
-| `CONFLUENCE_BASE_URL` | Yes (Confluence) | Atlassian domain, e.g. `https://acme.atlassian.net` |
-| `CONFLUENCE_USER_EMAIL` | Yes (Confluence) | Atlassian account email |
-| `CONFLUENCE_API_TOKEN` | Yes (Confluence) | Atlassian personal API token |
+| Variable                | Required         | Description                                         |
+| ----------------------- | ---------------- | --------------------------------------------------- |
+| `CONFLUENCE_BASE_URL`   | Yes (Confluence) | Atlassian domain, e.g. `https://acme.atlassian.net` |
+| `CONFLUENCE_USER_EMAIL` | Yes (Confluence) | Atlassian account email                             |
+| `CONFLUENCE_API_TOKEN`  | Yes (Confluence) | Atlassian personal API token                        |
 
 Never add LLM API keys to `.env`. They are passed from the client and forwarded server-side only during AI SDK calls.
 
@@ -257,10 +315,18 @@ Copy `.env.example` → `.env.local` to get started. `.env.local` is gitignored.
 
 ### Adding a new file upload format
 
-1. In `app/api/upload/route.ts`, add a new branch for the MIME type / extension
+1. In `lib/core/ingest.ts`, add a new branch for the file type in `ingestFromFile()` and `ingestFromBuffer()`
 2. Install any required parsing library and add it to `package.json` dependencies
 3. Update the `accept` attribute on the file input in `app/page.tsx`
 4. Update the validation regex in `handleFileUpload` in `app/page.tsx`
+
+### Adding a new CLI command
+
+1. Create `cli/commands/<name>.ts` exporting a `registerXxxCommand(program: Command)` function
+2. Import and call the shared core function from `lib/core/`
+3. Use `@inquirer/prompts` for interactive input and `ora` for spinners
+4. Register the command in `cli/index.ts`
+5. Update `README.md` CLI commands table
 
 ---
 
@@ -269,9 +335,11 @@ Copy `.env.example` → `.env.local` to get started. `.env.local` is gitignored.
 - **`--webpack` flag is required.** Both `npm run dev` and `npm run build` use `next dev --webpack` / `next build --webpack`. Do not remove this flag.
 - **`maxDuration = 300`** is set on the evaluate-pbi route because the 6-agent parallel swarm can take significant time. If adding a new long-running route, set this export accordingly.
 - **`prds/` is gitignored.** Never treat PRD files as persistent — they are ephemeral staging artifacts.
-- **No server-side session.** All user settings (LLM provider, custom prompts) live in browser `localStorage` only.
+- **No server-side session.** All user settings (LLM provider, custom prompts) live in browser `localStorage` (web) or `.prd-review.json` (CLI) only.
 - **Confluence credentials are server-side only** (via `process.env`). They must never be sent to the client.
 - **Azure DevOps PAT is client-supplied.** It is passed in the request body to `api/azure/export` and is never stored server-side.
+- **Business logic lives in `lib/core/`.** API routes and CLI commands are thin wrappers. Never duplicate logic.
+- **`.prd-review.json` is gitignored.** It may contain API keys. Use `.prd-review.example.json` as a template.
 
 ---
 

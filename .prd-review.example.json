@@ -1,0 +1,12 @@
+{
+  "provider": "mock",
+  "model": "",
+  "apiKey": "",
+  "codebasePath": "",
+  "azure": {
+    "org": "",
+    "project": "",
+    "pat": ""
+  },
+  "customPrompts": {}
+}

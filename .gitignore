@@ -42,3 +42,7 @@ next-env.d.ts
 
 # staged PRDs
 /prds/
+
+# CLI config & session files (may contain API keys)
+.prd-review.json
+.prd-review-session-*.json

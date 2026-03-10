@@ -115,7 +115,9 @@ export function htmlToMarkdown(html: string): string {
   const cleaned = html
     .replace(/<ac:structured-macro[^>]*>[\s\S]*?<\/ac:structured-macro>/g, (match) => {
       // Try to extract plain text body from macro
-      const bodyMatch = match.match(/<ac:plain-text-body><!\[CDATA\[([\s\S]*?)\]\]><\/ac:plain-text-body>/);
+      const bodyMatch = match.match(
+        /<ac:plain-text-body><!\[CDATA\[([\s\S]*?)\]\]><\/ac:plain-text-body>/,
+      );
       if (bodyMatch) {
         return `<pre><code>${bodyMatch[1]}</code></pre>`;
       }
