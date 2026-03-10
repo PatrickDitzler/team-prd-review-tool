@@ -27,7 +27,9 @@ export default async function ReviewPage({ params }: { params: Promise<{ pageId:
         </Link>
         <div>
           <h1 className="review-title">PRD Review Session</h1>
-          <p className="review-subtitle">Review with your team, ask questions, and break down the work.</p>
+          <p className="review-subtitle">
+            Review with your team, ask questions, and break down the work.
+          </p>
         </div>
         <div style={{ marginLeft: 'auto' }}>
           <ThemeToggle />

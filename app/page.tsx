@@ -22,10 +22,12 @@ export default function Home() {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement> | React.DragEvent<HTMLDivElement>) {
+  async function handleFileUpload(
+    e: React.ChangeEvent<HTMLInputElement> | React.DragEvent<HTMLDivElement>,
+  ) {
     e.preventDefault();
     let file: File | null = null;
-    
+
     if ('dataTransfer' in e) {
       setIsDragging(false);
       file = e.dataTransfer.files?.[0] || null;
@@ -37,7 +39,7 @@ export default function Home() {
 
     // Validate type roughly
     if (!file.name.match(/\.(pdf|docx|md|txt)$/i)) {
-      setError("Please upload a PDF, DOCX, or Markdown file.");
+      setError('Please upload a PDF, DOCX, or Markdown file.');
       return;
     }
 
@@ -56,7 +58,7 @@ export default function Home() {
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Upload failed');
-      
+
       setResult(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred during upload');
@@ -111,9 +113,16 @@ export default function Home() {
           </div>
           <h1 className="app-title">PRD Review Tool</h1>
         </div>
-        <div style={{ position: 'absolute', top: '48px', right: '24px', display: 'flex', gap: '8px' }}>
+        <div
+          style={{ position: 'absolute', top: '48px', right: '24px', display: 'flex', gap: '8px' }}
+        >
           <ThemeToggle />
-          <Link href="/settings" className="icon-button" aria-label="Settings" title="Configure AI Provider">
+          <Link
+            href="/settings"
+            className="icon-button"
+            aria-label="Settings"
+            title="Configure AI Provider"
+          >
             <Settings size={20} />
           </Link>
         </div>
@@ -156,14 +165,14 @@ export default function Home() {
           </button>
         </div>
         <div style={{ marginTop: '16px', display: 'flex', gap: '8px', justifyContent: 'center' }}>
-          <button 
-             className="btn-secondary" 
-             style={{ margin: 0, width: 'auto', fontSize: '13px', padding: '8px 16px' }} 
-             onClick={async () => { 
-               setInput('demo'); 
-               await handleFetch('demo'); 
-             }}
-             disabled={loading}
+          <button
+            className="btn-secondary"
+            style={{ margin: 0, width: 'auto', fontSize: '13px', padding: '8px 16px' }}
+            onClick={async () => {
+              setInput('demo');
+              await handleFetch('demo');
+            }}
+            disabled={loading}
           >
             Try Fake Demo PRD
           </button>
@@ -175,20 +184,26 @@ export default function Home() {
       </div>
 
       {/* ── File Upload Dropzone ── */}
-      <div 
+      <div
         className={`upload-zone ${isDragging ? 'upload-zone--dragging' : ''}`}
-        onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-        onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setIsDragging(true);
+        }}
+        onDragLeave={(e) => {
+          e.preventDefault();
+          setIsDragging(false);
+        }}
         onDrop={handleFileUpload}
         onClick={() => fileInputRef.current?.click()}
       >
         <Upload size={32} className="upload-icon" />
         <h3 className="upload-title">Upload a Local PRD</h3>
         <p className="upload-subtitle">Drag and drop or click to browse (PDF, DOCX, MD)</p>
-        <input 
-          type="file" 
-          ref={fileInputRef} 
-          style={{ display: 'none' }} 
+        <input
+          type="file"
+          ref={fileInputRef}
+          style={{ display: 'none' }}
           accept=".pdf,.docx,.md,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/markdown,text/plain"
           onChange={handleFileUpload}
         />
@@ -203,13 +218,23 @@ export default function Home() {
       )}
 
       {result && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
-          <div className="status-banner status-banner--success" role="status" style={{ marginBottom: 0 }}>
+        <div
+          style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}
+        >
+          <div
+            className="status-banner status-banner--success"
+            role="status"
+            style={{ marginBottom: 0 }}
+          >
             <span className="status-banner-icon">✓</span>
             Saved to <strong>{result.filePath}</strong>
           </div>
           <div style={{ alignSelf: 'flex-end' }}>
-            <Link href={`/review/${result.pageId}`} className="btn-primary" style={{ display: 'inline-block', width: 'auto' }}>
+            <Link
+              href={`/review/${result.pageId}`}
+              className="btn-primary"
+              style={{ display: 'inline-block', width: 'auto' }}
+            >
               Start PRD Review →
             </Link>
           </div>
@@ -237,9 +262,7 @@ export default function Home() {
       {result && (
         <div className="preview-panel">
           <div className="preview-header">
-            <span className="preview-title">
-              📄 {result.title}
-            </span>
+            <span className="preview-title">📄 {result.title}</span>
             <div className="preview-meta">
               <span className="preview-meta-item">Space: {result.spaceKey}</span>
               <span className="preview-meta-item">v{result.version}</span>
