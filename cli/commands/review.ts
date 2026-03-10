@@ -255,7 +255,7 @@ async function actionAddNotes(session: Record<string, unknown>) {
   console.log(chalk.dim('  Type your notes. Press Enter twice (empty line) to finish.'));
   const lines: string[] = [];
   let consecutive = 0;
-   
+  // eslint-disable-next-line no-constant-condition
   while (true) {
     const line = await input({ message: '>' });
     if (line.trim() === '') {
@@ -412,7 +412,7 @@ export function registerReviewCommand(program: Command) {
         }
 
         // ── Interactive session loop ──
-         
+        // eslint-disable-next-line no-constant-condition
         while (true) {
           console.log('');
           printDivider();

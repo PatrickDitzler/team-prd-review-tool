@@ -340,7 +340,7 @@ export function registerRunCommand(program: Command) {
                 console.log(chalk.dim('  Type notes. Press Enter on an empty line to finish.'));
                 const noteLines: string[] = [];
                 let emptyCount = 0;
-                 
+                // eslint-disable-next-line no-constant-condition
                 while (true) {
                   const line = await input({ message: '>' });
                   if (line.trim() === '') {
