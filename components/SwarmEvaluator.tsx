@@ -75,9 +75,9 @@ export default function SwarmEvaluator({ prdContext, breakdownContext }: SwarmEv
 
       // 2. Fetch AI Settings
       const settingsRaw = localStorage.getItem('llm_settings');
-      if (!settingsRaw)
-        throw new Error('AI Provider settings missing. Please configure them on the home page.');
-      const settings = JSON.parse(settingsRaw);
+      const settings = settingsRaw
+        ? JSON.parse(settingsRaw)
+        : { provider: 'mock', model: '', apiKey: '', baseURL: '' };
 
       const promptsRaw = localStorage.getItem('custom_prompts');
       const customPrompts = promptsRaw ? JSON.parse(promptsRaw) : {};

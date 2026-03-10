@@ -4,9 +4,10 @@ First off, thanks for taking the time to contribute! This tool is designed to be
 
 ## Codebase Context for AI Agents
 
-We maintain a comprehensive guide for automated development inside **`AGENTS.md`**. 
+We maintain a comprehensive guide for automated development inside **`AGENTS.md`**.
 
 If you are using an AI coding assistant, please instruct it to **read `AGENTS.md` first**. It contains:
+
 - The shared core architecture (`lib/core/` vs API/CLI wrappers)
 - Specific Next.js constraints (`--webpack` flag)
 - Step-by-step playbooks for adding new API routes, CLI commands, and Swarm agents.

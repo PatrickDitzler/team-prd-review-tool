@@ -54,9 +54,10 @@ export default function ReviewPanel({ markdown, pageId }: ReviewPanelProps) {
   const [approvedBreakdown, setApprovedBreakdown] = useState(false);
 
   const getSettings = () => {
-    if (typeof window === 'undefined') return null;
+    const fallback = { provider: 'mock', model: '', apiKey: '', baseURL: '' };
+    if (typeof window === 'undefined') return fallback;
     const s = localStorage.getItem('llm_settings');
-    return s ? JSON.parse(s) : null;
+    return s ? JSON.parse(s) : fallback;
   };
 
   const getPrompts = () => {
