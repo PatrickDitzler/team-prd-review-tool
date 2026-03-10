@@ -37,10 +37,9 @@ export async function ingestDemo(): Promise<IngestResult> {
   return {
     title: demoTitle,
     markdown: DEMO_MARKDOWN,
-    filePath: `prds/${filename}`,
+    stagedFilePath: `prds/${filename}`,
     pageId: 'demo',
-    spaceKey: 'DEMO',
-    version: 1,
+    source: { method: 'demo' },
   };
 }
 
@@ -64,10 +63,14 @@ export async function ingestFromConfluence(input: string): Promise<IngestResult>
   return {
     title: page.title,
     markdown: page.markdown,
-    filePath: `prds/${filename}`,
+    stagedFilePath: `prds/${filename}`,
     pageId: page.id,
-    spaceKey: page.spaceKey,
-    version: page.version,
+    source: {
+      method: 'confluence',
+      spaceKey: page.spaceKey,
+      version: page.version,
+      confluencePageId: page.id,
+    },
   };
 }
 
@@ -110,10 +113,9 @@ export async function ingestFromFile(filePath: string): Promise<IngestResult> {
   return {
     title: basename,
     markdown: formattedMarkdown,
-    filePath: mdPath,
+    stagedFilePath: mdPath,
     pageId,
-    spaceKey: 'UPLOAD',
-    version: 1,
+    source: { method: 'upload', originalFileName: basename },
   };
 }
 
@@ -164,9 +166,84 @@ export async function ingestFromBuffer(
   return {
     title: fileName,
     markdown: formattedMarkdown,
-    filePath: mdPath,
+    stagedFilePath: mdPath,
     pageId,
-    spaceKey: 'UPLOAD',
-    version: 1,
+    source: { method: 'upload', originalFileName: fileName },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Local repository file
+// ---------------------------------------------------------------------------
+
+export async function ingestFromLocalRepo(
+  repoPath: string,
+  fileRelativePath: string,
+): Promise<IngestResult> {
+  const absoluteFilePath = path.join(repoPath, fileRelativePath);
+
+  try {
+    await fs.access(absoluteFilePath);
+  } catch {
+    throw new Error(`File not found in repository: ${fileRelativePath}`);
+  }
+
+  const result = await ingestFromFile(absoluteFilePath);
+
+  // Override the source metadata to indicate repo origin
+  return {
+    ...result,
+    source: {
+      method: 'repo-local',
+      repoPath,
+      filePathInRepo: fileRelativePath,
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Azure DevOps repository file
+// ---------------------------------------------------------------------------
+
+export async function ingestFromAzureRepo(
+  org: string,
+  project: string,
+  repoName: string,
+  filePath: string,
+  branch: string,
+  pat: string,
+): Promise<IngestResult> {
+  const { fetchFileContent } = await import('./azure-repos');
+
+  const { content, fileName } = await fetchFileContent(
+    org,
+    project,
+    repoName,
+    pat,
+    filePath,
+    branch,
+  );
+
+  // Determine mime type from extension
+  const ext = path.extname(fileName).toLowerCase();
+  let mimeType = 'text/plain';
+  if (ext === '.pdf') mimeType = 'application/pdf';
+  else if (ext === '.docx')
+    mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  else if (ext === '.md') mimeType = 'text/markdown';
+
+  const result = await ingestFromBuffer(content, fileName, mimeType);
+
+  // Override the source metadata to indicate Azure DevOps repo origin
+  return {
+    ...result,
+    source: {
+      method: 'repo-azure-devops',
+      org,
+      project,
+      repoName,
+      filePath,
+      branch,
+    },
   };
 }

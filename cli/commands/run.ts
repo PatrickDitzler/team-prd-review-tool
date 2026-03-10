@@ -4,7 +4,7 @@ import ora from 'ora';
 import { promises as fs } from 'fs';
 import path from 'path';
 import chalk from 'chalk';
-import { ingestFromConfluence, ingestFromFile, ingestDemo } from '../../lib/core/ingest';
+import { ingestFromConfluence, ingestFromFile, ingestFromLocalRepo, ingestFromAzureRepo, ingestDemo } from '../../lib/core/ingest';
 import { generateReviewQuestions } from '../../lib/core/review';
 import { generateBreakdown } from '../../lib/core/breakdown';
 import { evaluatePBIs } from '../../lib/core/evaluate';
@@ -12,6 +12,8 @@ import { scanCodebase } from '../../lib/core/codebase-scanner';
 import { exportToAzureDevOps } from '../../lib/core/export';
 import { loadConfig, getEffectiveSettings } from '../../lib/core/config';
 import { exportReviewToMarkdown, importReviewFromMarkdown } from '../../lib/core/review-session';
+import { listPRDFiles } from '../../lib/core/repo-browser';
+import { listRepos, listItems } from '../../lib/core/azure-repos';
 import {
   printBanner,
   printHeader,
@@ -72,6 +74,7 @@ export function registerRunCommand(program: Command) {
         printHeader('STEP 1 — Select PRD');
 
         let result: IngestResult;
+        let repoContextPath = ''; // track repo path for swarm step
 
         if (options?.demo || source === 'demo') {
           const spinner = ora('Creating demo PRD...').start();
@@ -103,6 +106,8 @@ export function registerRunCommand(program: Command) {
             choices: [
               { name: '📎 Confluence URL or Page ID', value: 'confluence' },
               { name: '📁 Local file (PDF, DOCX, MD, TXT)', value: 'file' },
+              { name: '📂 From local repository (browse PRD files)', value: 'repo-local' },
+              { name: '☁️  From Azure DevOps Repo', value: 'repo-azure' },
               { name: '🎮 Demo PRD (no API needed)', value: 'demo' },
             ],
           });
@@ -116,6 +121,49 @@ export function registerRunCommand(program: Command) {
             const spinner = ora('Fetching from Confluence...').start();
             result = await ingestFromConfluence(url);
             spinner.succeed('Confluence page fetched and staged');
+          } else if (method === 'file') {
+            const filePath = await input({ message: 'File path:' });
+            const spinner = ora(`Parsing ${path.basename(filePath)}...`).start();
+            result = await ingestFromFile(path.resolve(filePath));
+            spinner.succeed('File parsed and staged');
+          } else if (method === 'repo-local') {
+            const repoPathInput = await input({ message: 'Repository root path:' });
+            const scanSpinner = ora('Scanning for PRD files...').start();
+            const files = listPRDFiles(repoPathInput.trim());
+            scanSpinner.succeed(`Found ${files.length} PRD file(s)`);
+            if (files.length === 0) { printError('No PRD files found.'); process.exit(1); }
+            const selFile = await select({
+              message: 'Select a PRD file:',
+              choices: files.map((f) => ({ name: `${f.relativePath} (${(f.sizeBytes/1024).toFixed(1)} KB)`, value: f.relativePath })),
+            });
+            const ingestSp = ora('Ingesting...').start();
+            result = await ingestFromLocalRepo(repoPathInput.trim(), selFile);
+            ingestSp.succeed('PRD ingested from repository');
+            repoContextPath = repoPathInput.trim();
+          } else if (method === 'repo-azure') {
+            const org = await input({ message: 'Azure DevOps Organization:' });
+            const project = await input({ message: 'Azure DevOps Project:' });
+            const pat = await input({ message: 'Personal Access Token (PAT):' });
+            const rSp = ora('Listing repositories...').start();
+            const repos = await listRepos(org.trim(), project.trim(), pat);
+            rSp.succeed(`Found ${repos.length} repo(s)`);
+            if (repos.length === 0) { printError('No repos found.'); process.exit(1); }
+            const selRepo = await select({
+              message: 'Select a repository:',
+              choices: repos.map((r) => ({ name: `${r.name} (${r.defaultBranch})`, value: r })),
+            });
+            const fSp = ora('Listing files...').start();
+            const items = await listItems(org.trim(), project.trim(), selRepo.id, pat);
+            const prdItems = items.filter((i) => !i.isFolder && ['.md','.pdf','.docx','.txt'].some((e) => i.path.toLowerCase().endsWith(e)));
+            fSp.succeed(`Found ${prdItems.length} PRD file(s)`);
+            if (prdItems.length === 0) { printError('No PRD files found.'); process.exit(1); }
+            const selItem = await select({
+              message: 'Select a PRD file:',
+              choices: prdItems.map((i) => ({ name: i.path, value: i.path })),
+            });
+            const iSp = ora('Ingesting from Azure DevOps...').start();
+            result = await ingestFromAzureRepo(org.trim(), project.trim(), selRepo.id, selItem, selRepo.defaultBranch, pat);
+            iSp.succeed('PRD ingested from Azure DevOps');
           } else {
             const filePath = await input({ message: 'File path:' });
             const spinner = ora(`Parsing ${path.basename(filePath)}...`).start();
@@ -125,7 +173,7 @@ export function registerRunCommand(program: Command) {
         }
 
         printSuccess(`Title: ${result.title}`);
-        printSuccess(`Saved: ${result.filePath}`);
+        printSuccess(`Saved: ${result.stagedFilePath}`);
         const pageId = result.pageId;
 
         // ── Step 2: Review ──────────────────────────────────────────────
@@ -481,8 +529,15 @@ export function registerRunCommand(program: Command) {
         // ── Step 4: Swarm Evaluation ────────────────────────────────────
         printHeader('STEP 4 — Swarm Evaluation');
 
-        let codebasePath = config.codebasePath || '';
-        if (!codebasePath) {
+        let codebasePath = config.codebasePath || repoContextPath || '';
+        if (repoContextPath) {
+          printInfo(`Using repo from ingestion step: ${repoContextPath}`);
+          const override = await input({
+            message: `Codebase path (Enter to use ${repoContextPath}):`,
+            default: repoContextPath,
+          });
+          codebasePath = override.trim() || repoContextPath;
+        } else if (!codebasePath) {
           codebasePath = await input({
             message: 'Local codebase path for swarm context (Enter to use CWD):',
             default: process.cwd(),

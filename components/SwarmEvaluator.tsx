@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import {
   Network,
@@ -17,6 +17,11 @@ import {
 interface SwarmEvaluatorProps {
   prdContext: string;
   breakdownContext: string;
+  initialRepoContext?: {
+    type: string;
+    label: string;
+    localPath?: string;
+  };
 }
 
 interface AgentFeedback {
@@ -32,8 +37,9 @@ interface EnhancedPBI {
   agentReviews: AgentFeedback[];
 }
 
-export default function SwarmEvaluator({ prdContext, breakdownContext }: SwarmEvaluatorProps) {
+export default function SwarmEvaluator({ prdContext, breakdownContext, initialRepoContext }: SwarmEvaluatorProps) {
   const [localPath, setLocalPath] = useState('');
+  const [repoFromIngestion, setRepoFromIngestion] = useState(false);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [evaluationComplete, setEvaluationComplete] = useState(false);
   const [enhancedPBIs, setEnhancedPBIs] = useState<EnhancedPBI[]>([]);
@@ -43,6 +49,20 @@ export default function SwarmEvaluator({ prdContext, breakdownContext }: SwarmEv
   const [azureConfig, setAzureConfig] = useState({ org: '', project: '', pat: '' });
   const [isExporting, setIsExporting] = useState(false);
   const [exportSuccessUrl, setExportSuccessUrl] = useState('');
+
+  // Pre-populate from repo context (either prop or localStorage)
+  useEffect(() => {
+    const ctx = initialRepoContext || (() => {
+      try {
+        const raw = localStorage.getItem('repo_context');
+        return raw ? JSON.parse(raw) : null;
+      } catch { return null; }
+    })();
+    if (ctx?.localPath && !localPath) {
+      setLocalPath(ctx.localPath);
+      setRepoFromIngestion(true);
+    }
+  }, [initialRepoContext]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePbiEditChange = (index: number, field: keyof EnhancedPBI, value: string) => {
     const newPbis = [...enhancedPBIs];
@@ -259,6 +279,11 @@ export default function SwarmEvaluator({ prdContext, breakdownContext }: SwarmEv
             style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 600 }}
           >
             Local Codebase Path (Absolute)
+            {repoFromIngestion && (
+              <span style={{ fontWeight: 400, fontSize: '11px', color: 'var(--color-success)', marginLeft: '8px' }}>
+                ✓ Auto-detected from ingestion
+              </span>
+            )}
           </label>
           <div className="fetch-input-row">
             <input
