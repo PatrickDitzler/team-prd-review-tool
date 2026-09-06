@@ -1,4 +1,4 @@
-# 📋 PRD Review Tool
+# 📋 Vibe Coded - Experimental PRD Review Tool
 
 A web-based tool **and CLI** for product managers and engineering teams to **fetch PRDs from Confluence** (or upload them locally), **run AI-powered reviews**, **break down work into PBIs**, and **export directly to Azure DevOps**.
 
